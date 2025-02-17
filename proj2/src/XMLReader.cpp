@@ -1,104 +1,121 @@
 #include "XMLReader.h"
 #include <expat.h>
 #include <queue>
-#include <cstring>
+#include <memory>
+#include <vector>
 
 struct CXMLReader::SImplementation {
-    std::shared_ptr<CDataSource> DDataSource;
-    XML_Parser DParser;
-    std::queue<SXMLEntity> DEntityQueue;
-    bool DError;
-    
-    static void StartElementHandler(void *userData, const XML_Char *name, const XML_Char **attrs) {
-        auto Implementation = static_cast<SImplementation*>(userData);
-        SXMLEntity Entity;
-        Entity.DType = SXMLEntity::EType::StartElement;
-        Entity.DNameData = name;
-        for(size_t Index = 0; attrs[Index]; Index += 2) {
-            Entity.DAttributes.push_back(std::make_pair(attrs[Index], attrs[Index + 1]));
+    std::shared_ptr<CDataSource> DataSource;
+    XML_Parser Parser;
+    std::queue<SXMLEntity> EntityQueue;
+    bool EndOfData;
+    std::string CharDataBuffer;
+
+    static void StartElementHandler(void *userData, const char *name, const char **atts) {
+        auto *impl = static_cast<SImplementation *>(userData);
+        impl->FlushCharData();
+        SXMLEntity entity;
+        entity.DType = SXMLEntity::EType::StartElement;
+        entity.DNameData = name;
+
+        // Parse attributes
+        if (atts != nullptr) {
+            for (int i = 0; atts[i] != nullptr; i += 2) {
+                if (atts[i + 1] != nullptr) {
+                    entity.DAttributes.emplace_back(atts[i], atts[i + 1]);
+                }
+            }
         }
-        Implementation->DEntityQueue.push(Entity);
+
+        impl->EntityQueue.push(entity);
     }
-    
-    static void EndElementHandler(void *userData, const XML_Char *name) {
-        auto Implementation = static_cast<SImplementation*>(userData);
-        SXMLEntity Entity;
-        Entity.DType = SXMLEntity::EType::EndElement;
-        Entity.DNameData = name;
-        Implementation->DEntityQueue.push(Entity);
+
+    static void EndElementHandler(void *userData, const char *name) {
+        auto *impl = static_cast<SImplementation *>(userData);
+        impl->FlushCharData();
+        SXMLEntity entity;
+        entity.DType = SXMLEntity::EType::EndElement;
+        entity.DNameData = name;
+        impl->EntityQueue.push(entity);
     }
-    
-    static void CharacterDataHandler(void *userData, const XML_Char *s, int len) {
-        auto Implementation = static_cast<SImplementation*>(userData);
-        std::string Content(s, len);
-        SXMLEntity Entity;
-        Entity.DType = SXMLEntity::EType::CharData;
-        Entity.DNameData = Content;
-        Implementation->DEntityQueue.push(Entity);
+
+    static void CharDataHandler(void *userData, const char *s, int len) {
+        auto *impl = static_cast<SImplementation *>(userData);
+        if (s != nullptr && len > 0) {
+            impl->CharDataBuffer.append(s, len);
+        }
     }
-    
-    SImplementation(std::shared_ptr<CDataSource> src)
-        : DDataSource(src), DError(false) {
-        DParser = XML_ParserCreate(NULL);
-        XML_SetUserData(DParser, this);
-        XML_SetElementHandler(DParser, StartElementHandler, EndElementHandler);
-        XML_SetCharacterDataHandler(DParser, CharacterDataHandler);
+
+    SImplementation(std::shared_ptr<CDataSource> src) : DataSource(std::move(src)), EndOfData(false) {
+        Parser = XML_ParserCreate(nullptr);
+        XML_SetUserData(Parser, this);
+        XML_SetElementHandler(Parser, StartElementHandler, EndElementHandler);
+        XML_SetCharacterDataHandler(Parser, CharDataHandler);
     }
-    
+
     ~SImplementation() {
-        XML_ParserFree(DParser);
+        XML_ParserFree(Parser);
     }
-    
-    bool End() const {
-        return DDataSource->End() && DEntityQueue.empty();
+
+    void FlushCharData() {
+        if (!CharDataBuffer.empty()) {
+            SXMLEntity entity;
+            entity.DType = SXMLEntity::EType::CharData;
+            entity.DNameData = CharDataBuffer;
+            EntityQueue.push(entity);
+            CharDataBuffer.clear();
+        }
     }
-    
+
     bool ReadEntity(SXMLEntity &entity, bool skipcdata) {
-        while(DEntityQueue.empty() && !DError && !DDataSource->End()) {
-            std::vector<char> Buffer;
-            if(DDataSource->Read(Buffer, 256)) {
-                if(XML_Parse(DParser, Buffer.data(), Buffer.size(), DDataSource->End()) == XML_STATUS_ERROR) {
-                    DError = true;
+        while (EntityQueue.empty() && !EndOfData) {
+            std::vector<char> buffer(4096); // Use vector instead of char array
+            size_t length = 0;
+            while (length < buffer.size() && !DataSource->End()) {
+                char ch;
+                if (DataSource->Get(ch)) {
+                    buffer[length++] = ch;
+                } else {
+                    break;
                 }
             }
-        }
-        
-        if(DError || (DEntityQueue.empty() && DDataSource->End())) {
-            return false;
-        }
-        
-        while(skipcdata && !DEntityQueue.empty() && 
-              DEntityQueue.front().DType == SXMLEntity::EType::CharData) {
-            DEntityQueue.pop();
-            
-            while(DEntityQueue.empty() && !DError && !DDataSource->End()) {
-                std::vector<char> Buffer;
-                if(DDataSource->Read(Buffer, 256)) {
-                    if(XML_Parse(DParser, Buffer.data(), Buffer.size(), DDataSource->End()) == XML_STATUS_ERROR) {
-                        DError = true;
-                    }
-                }
+
+            if (length == 0) {
+                // No more data to read
+                EndOfData = true;
+                XML_Parse(Parser, nullptr, 0, 1); // Signal end of parsing
+                break;
             }
-            
-            if(DError || (DEntityQueue.empty() && DDataSource->End())) {
+
+            if (XML_Parse(Parser, buffer.data(), length, 0) == XML_STATUS_ERROR) {
+                // Parsing error
                 return false;
             }
         }
-        
-        entity = DEntityQueue.front();
-        DEntityQueue.pop();
-        return true;
+
+        if (!EntityQueue.empty()) {
+            entity = EntityQueue.front();
+            EntityQueue.pop();
+
+            // Skip CDATA if requested
+            if (skipcdata && entity.DType == SXMLEntity::EType::CharData) {
+                return ReadEntity(entity, skipcdata); // Recursively skip CDATA
+            }
+
+            return true;
+        }
+
+        return false; // No more entities to read
     }
 };
 
 CXMLReader::CXMLReader(std::shared_ptr<CDataSource> src)
-    : DImplementation(std::make_unique<SImplementation>(src)) {
-}
+    : DImplementation(std::make_unique<SImplementation>(std::move(src))) {}
 
 CXMLReader::~CXMLReader() = default;
 
 bool CXMLReader::End() const {
-    return DImplementation->End();
+    return DImplementation->EndOfData && DImplementation->EntityQueue.empty();
 }
 
 bool CXMLReader::ReadEntity(SXMLEntity &entity, bool skipcdata) {
