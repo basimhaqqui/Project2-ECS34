@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 
 TEST(XMLTest, BasicReadWrite) {
-    std::shared_ptr<CStringDataSource> src = std::make_shared<CStringDataSource>("<tag>data</tag>");
+    std::shared_ptr<CStringDataSource> src = std::make_shared<CStringDataSource>("<tag>words</tag>");
     std::shared_ptr<CStringDataSink> sink = std::make_shared<CStringDataSink>();
 
     CXMLReader reader(src);
@@ -18,7 +18,7 @@ TEST(XMLTest, BasicReadWrite) {
         }
     }
 
-    EXPECT_EQ(sink->String(), "<tag>data</tag>"); 
+    EXPECT_EQ(sink->String(), "<tag>words</tag>"); 
 }
 
 
