@@ -4,19 +4,23 @@
 #include "StringDataSink.h"
 #include <gtest/gtest.h>
 
-TEST(DSVTest, BasicReadWrite) {
-    std::shared_ptr<CStringDataSource> src = std::make_shared<CStringDataSource>("a,b,c\n1,2,3\n");
-    std::shared_ptr<CStringDataSink> sink = std::make_shared<CStringDataSink>();
-
-    CDSVReader reader(src, ',');
-    CDSVWriter writer(sink, ',');
-
-    std::vector<std::string> row;
-    while (!reader.End()) {
-        if (reader.ReadRow(row)) {
-            writer.WriteRow(row);
+TEST(DSVTest, SimpleCSVProcessing) {
+    // Create source with employee data
+    auto source = std::make_shared<CStringDataSource>("name,age,department\nJohn,34,Sales\n");
+    auto output = std::make_shared<CStringDataSink>();
+    
+    // Initialize CSV reader and writer
+    CDSVReader csvReader(source, ',');
+    CDSVWriter csvWriter(output, ',');
+    
+    // Process row by row
+    std::vector<std::string> currentRow;
+    while (!csvReader.End()) {
+        if (csvReader.ReadRow(currentRow)) {
+            csvWriter.WriteRow(currentRow);
         }
     }
 
-    EXPECT_EQ(sink->String(), "a,b,c\n1,2,3\n"); 
+    // Verify output matches input
+    EXPECT_EQ(output->String(), "name,age,department\nJohn,34,Sales\n");
 }
