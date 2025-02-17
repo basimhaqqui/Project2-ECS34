@@ -31,12 +31,46 @@ struct CXMLReader::SImplementation {
     static void CharacterDataHandler(void *userData, const XML_Char *s, int len) {
         auto Implementation = static_cast<SImplementation*>(userData);
         std::string Content(s, len);
-
-        // Always process CharData, even if it's only whitespace
-        SXMLEntity Entity;
-        Entity.DType = SXMLEntity::EType::CharData;
-        Entity.DNameData = Content; // Preserve the content as-is, including whitespace and special characters
-        Implementation->DEntityQueue.push(Entity);
+        // Skip if content is only whitespace
+        bool OnlyWhitespace = true;
+        for(char Ch : Content) {
+            if(!std::isspace(Ch)) {
+                OnlyWhitespace = false;
+                break;
+            }
+        }
+        if(!OnlyWhitespace) {
+            SXMLEntity Entity;
+            Entity.DType = SXMLEntity::EType::CharData;
+            Entity.DNameData = Content;
+            // Handle special XML characters
+            size_t pos = 0;
+            while((pos = Entity.DNameData.find('&', pos)) != std::string::npos) {
+                Entity.DNameData.replace(pos, 1, "&amp;");
+                pos += 5;
+            }
+            pos = 0;
+            while((pos = Entity.DNameData.find('"', pos)) != std::string::npos) {
+                Entity.DNameData.replace(pos, 1, "&quot;");
+                pos += 6;
+            }
+            pos = 0;
+            while((pos = Entity.DNameData.find('\'', pos)) != std::string::npos) {
+                Entity.DNameData.replace(pos, 1, "&apos;");
+                pos += 6;
+            }
+            pos = 0;
+            while((pos = Entity.DNameData.find('<', pos)) != std::string::npos) {
+                Entity.DNameData.replace(pos, 1, "&lt;");
+                pos += 4;
+            }
+            pos = 0;
+            while((pos = Entity.DNameData.find('>', pos)) != std::string::npos) {
+                Entity.DNameData.replace(pos, 1, "&gt;");
+                pos += 4;
+            }
+            Implementation->DEntityQueue.push(Entity);
+        }
     }
     
     SImplementation(std::shared_ptr<CDataSource> src)
@@ -92,3 +126,17 @@ struct CXMLReader::SImplementation {
         return true;
     }
 };
+
+CXMLReader::CXMLReader(std::shared_ptr<CDataSource> src)
+    : DImplementation(std::make_unique<SImplementation>(src)) {
+}
+
+CXMLReader::~CXMLReader() = default;
+
+bool CXMLReader::End() const {
+    return DImplementation->End();
+}
+
+bool CXMLReader::ReadEntity(SXMLEntity &entity, bool skipcdata) {
+    return DImplementation->ReadEntity(entity, skipcdata);
+}
