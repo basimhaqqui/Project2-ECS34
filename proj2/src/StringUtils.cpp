@@ -167,6 +167,18 @@ std::string Join(const std::string &str, const std::vector<std::string> &vect) n
 }
 
 std::string ExpandTabs(const std::string &str, int tabsize) noexcept {
+    if (tabsize <= 0) {
+        // Treat tabsize 0 or negative as removing all tabs
+        std::string result;
+        result.reserve(str.size());
+        for (char ch : str) {
+            if (ch != '\t') {
+                result += ch;
+            }
+        }
+        return result;
+    }
+    
     if(str.empty()) {
         return str;
     }
