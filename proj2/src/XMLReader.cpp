@@ -2,6 +2,12 @@
 #include <expat.h>
 #include <queue>
 #include <cstring>
+#include <cctype>
+#include <vector>
+#include <memory>
+#include <string>
+
+// Note: SXMLEntity, CDataSource, and CXMLReader are assumed to be defined in your project.
 
 struct CXMLReader::SImplementation {
     std::shared_ptr<CDataSource> DDataSource;
@@ -14,7 +20,7 @@ struct CXMLReader::SImplementation {
         SXMLEntity Entity;
         Entity.DType = SXMLEntity::EType::StartElement;
         Entity.DNameData = name;
-        for(size_t Index = 0; attrs[Index]; Index += 2) {
+        for (size_t Index = 0; attrs[Index]; Index += 2) {
             Entity.DAttributes.push_back(std::make_pair(attrs[Index], attrs[Index + 1]));
         }
         Implementation->DEntityQueue.push(Entity);
@@ -33,42 +39,16 @@ struct CXMLReader::SImplementation {
         std::string Content(s, len);
         // Skip if content is only whitespace
         bool OnlyWhitespace = true;
-        for(char Ch : Content) {
-            if(!std::isspace(Ch)) {
+        for (char Ch : Content) {
+            if (!std::isspace(static_cast<unsigned char>(Ch))) {
                 OnlyWhitespace = false;
                 break;
             }
         }
-        if(!OnlyWhitespace) {
+        if (!OnlyWhitespace) {
             SXMLEntity Entity;
             Entity.DType = SXMLEntity::EType::CharData;
-            Entity.DNameData = Content;
-            // Handle special XML characters
-            size_t pos = 0;
-            while((pos = Entity.DNameData.find('&', pos)) != std::string::npos) {
-                Entity.DNameData.replace(pos, 1, "&amp;");
-                pos += 5;
-            }
-            pos = 0;
-            while((pos = Entity.DNameData.find('"', pos)) != std::string::npos) {
-                Entity.DNameData.replace(pos, 1, "&quot;");
-                pos += 6;
-            }
-            pos = 0;
-            while((pos = Entity.DNameData.find('\'', pos)) != std::string::npos) {
-                Entity.DNameData.replace(pos, 1, "&apos;");
-                pos += 6;
-            }
-            pos = 0;
-            while((pos = Entity.DNameData.find('<', pos)) != std::string::npos) {
-                Entity.DNameData.replace(pos, 1, "&lt;");
-                pos += 4;
-            }
-            pos = 0;
-            while((pos = Entity.DNameData.find('>', pos)) != std::string::npos) {
-                Entity.DNameData.replace(pos, 1, "&gt;");
-                pos += 4;
-            }
+            Entity.DNameData = Content; // Do not re-escape; use the content as provided.
             Implementation->DEntityQueue.push(Entity);
         }
     }
@@ -90,33 +70,33 @@ struct CXMLReader::SImplementation {
     }
     
     bool ReadEntity(SXMLEntity &entity, bool skipcdata) {
-        while(DEntityQueue.empty() && !DError && !DDataSource->End()) {
+        while (DEntityQueue.empty() && !DError && !DDataSource->End()) {
             std::vector<char> Buffer;
-            if(DDataSource->Read(Buffer, 256)) {
-                if(XML_Parse(DParser, Buffer.data(), Buffer.size(), DDataSource->End()) == XML_STATUS_ERROR) {
+            if (DDataSource->Read(Buffer, 256)) {
+                if (XML_Parse(DParser, Buffer.data(), Buffer.size(), DDataSource->End()) == XML_STATUS_ERROR) {
                     DError = true;
                 }
             }
         }
         
-        if(DError || (DEntityQueue.empty() && DDataSource->End())) {
+        if (DError || (DEntityQueue.empty() && DDataSource->End())) {
             return false;
         }
         
-        while(skipcdata && !DEntityQueue.empty() && 
-              DEntityQueue.front().DType == SXMLEntity::EType::CharData) {
+        while (skipcdata && !DEntityQueue.empty() &&
+               DEntityQueue.front().DType == SXMLEntity::EType::CharData) {
             DEntityQueue.pop();
             
-            while(DEntityQueue.empty() && !DError && !DDataSource->End()) {
+            while (DEntityQueue.empty() && !DError && !DDataSource->End()) {
                 std::vector<char> Buffer;
-                if(DDataSource->Read(Buffer, 256)) {
-                    if(XML_Parse(DParser, Buffer.data(), Buffer.size(), DDataSource->End()) == XML_STATUS_ERROR) {
+                if (DDataSource->Read(Buffer, 256)) {
+                    if (XML_Parse(DParser, Buffer.data(), Buffer.size(), DDataSource->End()) == XML_STATUS_ERROR) {
                         DError = true;
                     }
                 }
             }
             
-            if(DError || (DEntityQueue.empty() && DDataSource->End())) {
+            if (DError || (DEntityQueue.empty() && DDataSource->End())) {
                 return false;
             }
         }
