@@ -31,10 +31,21 @@ struct CXMLReader::SImplementation {
     static void CharacterDataHandler(void *userData, const XML_Char *s, int len) {
         auto Implementation = static_cast<SImplementation*>(userData);
         if(len) {
-            SXMLEntity Entity;
-            Entity.DType = SXMLEntity::EType::CharData;
-            Entity.DNameData = std::string(s, len);
-            Implementation->DEntityQueue.push(Entity);
+            std::string Content(s, len);
+            // Skip if content is only whitespace
+            bool OnlyWhitespace = true;
+            for(char Ch : Content) {
+                if(!std::isspace(Ch)) {
+                    OnlyWhitespace = false;
+                    break;
+                }
+            }
+            if(!OnlyWhitespace) {
+                SXMLEntity Entity;
+                Entity.DType = SXMLEntity::EType::CharData;
+                Entity.DNameData = Content;
+                Implementation->DEntityQueue.push(Entity);
+            }
         }
     }
     
@@ -55,8 +66,9 @@ struct CXMLReader::SImplementation {
     }
     
     bool ReadEntity(SXMLEntity &entity, bool skipcdata) {
+        std::vector<char> Buffer;
+        
         while(DEntityQueue.empty() && !DError && !DDataSource->End()) {
-            std::vector<char> Buffer;
             if(DDataSource->Read(Buffer, 256)) {
                 if(XML_Parse(DParser, Buffer.data(), Buffer.size(), DDataSource->End()) == XML_STATUS_ERROR) {
                     DError = true;
@@ -71,10 +83,18 @@ struct CXMLReader::SImplementation {
         while(skipcdata && !DEntityQueue.empty() && 
               DEntityQueue.front().DType == SXMLEntity::EType::CharData) {
             DEntityQueue.pop();
-        }
-        
-        if(DEntityQueue.empty()) {
-            return false;
+            
+            while(DEntityQueue.empty() && !DError && !DDataSource->End()) {
+                if(DDataSource->Read(Buffer, 256)) {
+                    if(XML_Parse(DParser, Buffer.data(), Buffer.size(), DDataSource->End()) == XML_STATUS_ERROR) {
+                        DError = true;
+                    }
+                }
+            }
+            
+            if(DError || (DEntityQueue.empty() && DDataSource->End())) {
+                return false;
+            }
         }
         
         entity = DEntityQueue.front();
