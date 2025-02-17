@@ -28,14 +28,37 @@ std::string Slice(const std::string &str, ssize_t start, ssize_t end) noexcept {
 }
 
 std::string Capitalize(const std::string &str) noexcept {
-    if(str.empty()) {
-        return str;
+
+    //return the string if its empty
+
+    if (str.empty()){
+
+    return str;
+
+    } 
+
+    //storing input string here
+
+    std::string result = str;
+
+    //capatilize the first character
+
+    result[0] = std::toupper(result[0]);
+
+    //i created a for loop here based on size of result to make sure everything
+
+    //else is lower case
+
+    for (size_t i = 1; i < result.size(); ++i) {
+
+        result[i] = std::tolower(result[i]);
+
     }
-    std::string result = Lower(str); // First convert whole string to lowercase
-    if (!result.empty() && std::isalpha(result[0])) {
-        result[0] = std::toupper(result[0]); // Then capitalize first letter
-    }
+
+    //return all characters
+
     return result;
+
 }
 
 std::string Upper(const std::string &str) noexcept {
