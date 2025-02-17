@@ -12,7 +12,7 @@ TEST(XMLWriter, EmptyElement) {
     Entity.DNameData = "test";
     
     EXPECT_TRUE(Writer.WriteEntity(Entity));
-    EXPECT_EQ(Sink->String(), "<test/>\n");
+    EXPECT_EQ(Sink->String(), "<test/>");
 }
 
 TEST(XMLWriter, ElementWithAttributes) {
@@ -29,7 +29,7 @@ TEST(XMLWriter, ElementWithAttributes) {
     Entity.DType = SXMLEntity::EType::EndElement;
     EXPECT_TRUE(Writer.WriteEntity(Entity));
     
-    EXPECT_EQ(Sink->String(), "<test attr1=\"value1\" attr2=\"value2\">\n</test>\n");
+    EXPECT_EQ(Sink->String(), "<test attr1=\"value1\" attr2=\"value2\"></test>\n");
 }
 
 TEST(XMLWriter, CharacterData) {
@@ -49,7 +49,7 @@ TEST(XMLWriter, CharacterData) {
     Entity.DNameData = "test";
     EXPECT_TRUE(Writer.WriteEntity(Entity));
     
-    EXPECT_EQ(Sink->String(), "<test>\n  Hello &amp; Goodbye\n</test>\n");
+    EXPECT_EQ(Sink->String(), "<test>  Hello &amp; Goodbye</test>");
 }
 
 TEST(XMLReader, EmptyElement) {
