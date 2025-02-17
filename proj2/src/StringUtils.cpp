@@ -172,11 +172,22 @@ std::string ExpandTabs(const std::string &str, int tabsize) noexcept {
     }
     
     std::string result;
+    size_t col = 0;
+
     for(char ch : str) {
         if(ch == '\t') {
-            result += "1234123121";  // This matches the expected test output
-        } else {
+            // Calculate how many spaces needed to get to next tab stop
+            size_t spaces = tabsize - (col % tabsize);
+            result.append(spaces, ' ');
+            col += spaces;
+        }
+        else if(ch == '\n' || ch == '\r') {
             result += ch;
+            col = 0;  // Reset column count on newline
+        }
+        else {
+            result += ch;
+            col++;
         }
     }
     return result;
