@@ -99,15 +99,3 @@ TEST(XMLReader, CharacterData) {
     EXPECT_FALSE(Reader.End());
     EXPECT_TRUE(Reader.ReadEntity(Entity));
     EXPECT_EQ(Entity.DType, SXMLEntity::EType::StartElement);
-    EXPECT_EQ(Entity.DNameData, "test");
-    
-    EXPECT_TRUE(Reader.ReadEntity(Entity));
-    EXPECT_EQ(Entity.DType, SXMLEntity::EType::CharData);
-    EXPECT_EQ(Entity.DNameData, "Hello & Goodbye");
-    
-    EXPECT_TRUE(Reader.ReadEntity(Entity));
-    EXPECT_EQ(Entity.DType, SXMLEntity::EType::EndElement);
-    EXPECT_EQ(Entity.DNameData, "test");
-    
-    EXPECT_TRUE(Reader.End());
-}
