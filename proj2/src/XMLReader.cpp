@@ -30,46 +30,23 @@ struct CXMLReader::SImplementation {
     
     static void CharacterDataHandler(void *userData, const XML_Char *s, int len) {
         auto Implementation = static_cast<SImplementation*>(userData);
-        std::string Content(s, len);
-        // Skip if content is only whitespace
-        bool OnlyWhitespace = true;
-        for(char Ch : Content) {
-            if(!std::isspace(Ch)) {
-                OnlyWhitespace = false;
-                break;
+        if(len) {
+            std::string Content(s, len);
+            // Skip if content is only whitespace
+            bool OnlyWhitespace = true;
+            for(char Ch : Content) {
+                if(!std::isspace(Ch)) {
+                    OnlyWhitespace = false;
+                    break;
+                }
             }
-        }
-        if(!OnlyWhitespace) {
-            SXMLEntity Entity;
-            Entity.DType = SXMLEntity::EType::CharData;
-            Entity.DNameData = Content;
-            // Handle special XML characters
-            size_t pos = 0;
-            while((pos = Entity.DNameData.find('&', pos)) != std::string::npos) {
-                Entity.DNameData.replace(pos, 1, "&amp;");
-                pos += 5;
+            if(!OnlyWhitespace) {
+                SXMLEntity Entity;
+                Entity.DType = SXMLEntity::EType::CharData;
+                // Don't escape special characters - use raw content
+                Entity.DNameData = Content;
+                Implementation->DEntityQueue.push(Entity);
             }
-            pos = 0;
-            while((pos = Entity.DNameData.find('"', pos)) != std::string::npos) {
-                Entity.DNameData.replace(pos, 1, "&quot;");
-                pos += 6;
-            }
-            pos = 0;
-            while((pos = Entity.DNameData.find('\'', pos)) != std::string::npos) {
-                Entity.DNameData.replace(pos, 1, "&apos;");
-                pos += 6;
-            }
-            pos = 0;
-            while((pos = Entity.DNameData.find('<', pos)) != std::string::npos) {
-                Entity.DNameData.replace(pos, 1, "&lt;");
-                pos += 4;
-            }
-            pos = 0;
-            while((pos = Entity.DNameData.find('>', pos)) != std::string::npos) {
-                Entity.DNameData.replace(pos, 1, "&gt;");
-                pos += 4;
-            }
-            Implementation->DEntityQueue.push(Entity);
         }
     }
     
