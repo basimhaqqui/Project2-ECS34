@@ -98,4 +98,4 @@ TEST(XMLReader, CharacterData) {
     
     EXPECT_FALSE(Reader.End());
     EXPECT_TRUE(Reader.ReadEntity(Entity));
-    EXPECT_EQ(Entity.DType, SXMLEntity::EType::StartElement);
+    EXPECT_EQ(Entity.DType, SXMLEntity::EType::StartElement);}
