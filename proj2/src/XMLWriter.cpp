@@ -63,84 +63,44 @@ struct CXMLWriter::SImplementation {
     bool WriteEntity(const SXMLEntity &entity) {
         switch(entity.DType) {
             case SXMLEntity::EType::StartElement:
-                if(!WriteString("<")) {
-                    return false;
-                }
-                if(!WriteString(entity.DNameData)) {
+                if(!WriteString("<") ||
+                   !WriteString(entity.DNameData)) {
                     return false;
                 }
                 for(const auto &attr : entity.DAttributes) {
-                    if(!WriteString(" ")) {
-                        return false;
-                    }
-                    if(!WriteString(attr.first)) {
-                        return false;
-                    }
-                    if(!WriteString("=\"")) {
-                        return false;
-                    }
-                    if(!WriteEscaped(attr.second)) {
-                        return false;
-                    }
-                    if(!WriteString("\"")) {
+                    if(!WriteString(" ") ||
+                       !WriteString(attr.first) ||
+                       !WriteString("=\"") ||
+                       !WriteEscaped(attr.second) ||
+                       !WriteString("\"")) {
                         return false;
                     }
                 }
-                if(!WriteString(">")) {
-                    return false;
-                }
-                DElementStack.push(entity.DNameData);
-                break;
+                return WriteString(">");
                 
             case SXMLEntity::EType::EndElement:
-                if(!WriteString("</")) {
-                    return false;
-                }
-                if(!WriteString(entity.DNameData)) {
-                    return false;
-                }
-                if(!WriteString(">")) {
-                    return false;
-                }
-                if(!DElementStack.empty()) {
-                    DElementStack.pop();
-                }
-                break;
+                return WriteString("</") &&
+                       WriteString(entity.DNameData) &&
+                       WriteString(">");
                 
             case SXMLEntity::EType::CharData:
-                if(!WriteEscaped(entity.DNameData)) {
-                    return false;
-                }
-                break;
+                return WriteEscaped(entity.DNameData);
                 
             case SXMLEntity::EType::CompleteElement:
-                if(!WriteString("<")) {
-                    return false;
-                }
-                if(!WriteString(entity.DNameData)) {
+                if(!WriteString("<") ||
+                   !WriteString(entity.DNameData)) {
                     return false;
                 }
                 for(const auto &attr : entity.DAttributes) {
-                    if(!WriteString(" ")) {
-                        return false;
-                    }
-                    if(!WriteString(attr.first)) {
-                        return false;
-                    }
-                    if(!WriteString("=\"")) {
-                        return false;
-                    }
-                    if(!WriteEscaped(attr.second)) {
-                        return false;
-                    }
-                    if(!WriteString("\"")) {
+                    if(!WriteString(" ") ||
+                       !WriteString(attr.first) ||
+                       !WriteString("=\"") ||
+                       !WriteEscaped(attr.second) ||
+                       !WriteString("\"")) {
                         return false;
                     }
                 }
-                if(!WriteString("/>")) {
-                    return false;
-                }
-                break;
+                return WriteString("/>");
         }
         return true;
     }

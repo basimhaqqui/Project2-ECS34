@@ -31,10 +31,8 @@ std::string Capitalize(const std::string &str) noexcept {
     if(str.empty()) {
         return str;
     }
-    std::string result = Lower(str); // First convert whole string to lowercase
-    if (!result.empty() && std::isalpha(result[0])) {
-        result[0] = std::toupper(result[0]); // Then capitalize first letter
-    }
+    std::string result = str;
+    result[0] = std::toupper(result[0]);
     return result;
 }
 
