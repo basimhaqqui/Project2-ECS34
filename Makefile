@@ -1,3 +1,5 @@
+.DEFAULT_GOAL := all
+
 CXX = g++
 CXXFLAGS = -g -std=c++17 -Wall -Wextra -Werror
 INCLUDES = -I./include
