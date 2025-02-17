@@ -1,56 +1,58 @@
 CXX = g++
-CXXFLAGS = -Wall -Wextra -Werror -std=c++17 -g -I./include -I/opt/homebrew/include
-LDFLAGS = -L/opt/homebrew/lib -lgtest -lgtest_main -lpthread -lexpat
+CXXFLAGS = -g -std=c++17 -Wall -Wextra -Werror
+INCLUDES = -I./include
+LDFLAGS = -lgtest -lgtest_main -lpthread -lexpat
 
+# Directories
 OBJDIR = obj
 BINDIR = bin
+SRCDIR = src
+TESTDIR = testsrc
 
-SOURCES = src/StringUtils.cpp src/StringDataSource.cpp src/StringDataSink.cpp \
-          src/DSVReader.cpp src/DSVWriter.cpp src/XMLReader.cpp src/XMLWriter.cpp
-TESTS = testsrc/StringUtilsTest.cpp testsrc/StringDataSourceTest.cpp \
-        testsrc/StringDataSinkTest.cpp testsrc/DSVTest.cpp testsrc/XMLTest.cpp
+# Test executables
+TESTSTRUTILS = $(BINDIR)/teststrutils
+TESTSTRDATASOURCE = $(BINDIR)/teststrdatasource
+TESTSTRDATASINK = $(BINDIR)/teststrdatasink
+TESTDSV = $(BINDIR)/testdsv
+TESTXML = $(BINDIR)/testxml
 
-OBJS = $(SOURCES:src/%.cpp=$(OBJDIR)/%.o)
-TEST_OBJS = $(TESTS:testsrc/%.cpp=$(OBJDIR)/%.o)
+.PHONY: all clean test directories
 
-$(shell mkdir -p $(OBJDIR) $(BINDIR))
+all: directories $(TESTSTRUTILS) $(TESTSTRDATASOURCE) $(TESTSTRDATASINK) $(TESTDSV) $(TESTXML) test
 
-all: teststrutils teststrdatasource teststrdatasink testdsv testxml
+directories:
+	@mkdir -p $(OBJDIR)
+	@mkdir -p $(BINDIR)
 
-teststrutils: $(OBJDIR)/StringUtils.o $(OBJDIR)/StringUtilsTest.o
-	$(CXX) -o $(BINDIR)/$@ $^ $(LDFLAGS)
-	@echo "Running $@ tests..."
-	@$(BINDIR)/$@
+# Object files
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
-teststrdatasource: $(OBJDIR)/StringDataSource.o $(OBJDIR)/StringDataSourceTest.o
-	$(CXX) -o $(BINDIR)/$@ $^ $(LDFLAGS)
-	@echo "Running $@ tests..."
-	@$(BINDIR)/$@
+$(OBJDIR)/%.o: $(TESTDIR)/%.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
-teststrdatasink: $(OBJDIR)/StringDataSink.o $(OBJDIR)/StringDataSinkTest.o
-	$(CXX) -o $(BINDIR)/$@ $^ $(LDFLAGS)
-	@echo "Running $@ tests..."
-	@$(BINDIR)/$@
+# Test executables
+$(TESTSTRUTILS): $(OBJDIR)/StringUtils.o $(OBJDIR)/StringUtilsTest.o
+	$(CXX) $^ $(LDFLAGS) -o $@
 
-testdsv: $(OBJDIR)/DSVReader.o $(OBJDIR)/DSVWriter.o $(OBJDIR)/DSVTest.o \
-        $(OBJDIR)/StringDataSource.o $(OBJDIR)/StringDataSink.o
-	$(CXX) -o $(BINDIR)/$@ $^ $(LDFLAGS)
-	@echo "Running $@ tests..."
-	@$(BINDIR)/$@
+$(TESTSTRDATASOURCE): $(OBJDIR)/StringDataSource.o $(OBJDIR)/StringDataSourceTest.o
+	$(CXX) $^ $(LDFLAGS) -o $@
 
-testxml: $(OBJDIR)/XMLReader.o $(OBJDIR)/XMLWriter.o $(OBJDIR)/XMLTest.o \
-        $(OBJDIR)/StringDataSource.o $(OBJDIR)/StringDataSink.o
-	$(CXX) -o $(BINDIR)/$@ $^ $(LDFLAGS)
-	@echo "Running $@ tests..."
-	@$(BINDIR)/$@
+$(TESTSTRDATASINK): $(OBJDIR)/StringDataSink.o $(OBJDIR)/StringDataSinkTest.o
+	$(CXX) $^ $(LDFLAGS) -o $@
 
-$(OBJDIR)/%.o: src/%.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+$(TESTDSV): $(OBJDIR)/DSVReader.o $(OBJDIR)/DSVWriter.o $(OBJDIR)/StringDataSource.o $(OBJDIR)/StringDataSink.o $(OBJDIR)/DSVTest.o
+	$(CXX) $^ $(LDFLAGS) -o $@
 
-$(OBJDIR)/%.o: testsrc/%.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+$(TESTXML): $(OBJDIR)/XMLReader.o $(OBJDIR)/XMLWriter.o $(OBJDIR)/StringDataSource.o $(OBJDIR)/StringDataSink.o $(OBJDIR)/XMLTest.o
+	$(CXX) $^ $(LDFLAGS) -o $@
+
+test: $(TESTSTRUTILS) $(TESTSTRDATASOURCE) $(TESTSTRDATASINK) $(TESTDSV) $(TESTXML)
+	./$(TESTSTRUTILS)
+	./$(TESTSTRDATASOURCE)
+	./$(TESTSTRDATASINK)
+	./$(TESTDSV)
+	./$(TESTXML)
 
 clean:
 	rm -rf $(OBJDIR) $(BINDIR)
-
-.PHONY: all clean teststrutils teststrdatasource teststrdatasink testdsv testxml

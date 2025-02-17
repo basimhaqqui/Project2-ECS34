@@ -5,22 +5,9 @@
 struct CXMLWriter::SImplementation {
     std::shared_ptr<CDataSink> DDataSink;
     std::stack<std::string> DElementStack;
-    size_t DIndentLevel;
     
     SImplementation(std::shared_ptr<CDataSink> sink)
-        : DDataSink(sink), DIndentLevel(0) {
-    }
-    
-    bool WriteIndent() {
-        for(size_t i = 0; i < DIndentLevel; ++i) {
-            if(!DDataSink->Put(' ')) {
-                return false;
-            }
-            if(!DDataSink->Put(' ')) {
-                return false;
-            }
-        }
-        return true;
+        : DDataSink(sink) {
     }
     
     bool WriteString(const std::string &str) {
@@ -59,17 +46,13 @@ struct CXMLWriter::SImplementation {
     
     bool Flush() {
         while(!DElementStack.empty()) {
-            DIndentLevel--;
-            if(!WriteIndent()) {
-                return false;
-            }
             if(!WriteString("</")) {
                 return false;
             }
             if(!WriteString(DElementStack.top())) {
                 return false;
             }
-            if(!WriteString(">\n")) {
+            if(!WriteString(">")) {
                 return false;
             }
             DElementStack.pop();
@@ -80,9 +63,6 @@ struct CXMLWriter::SImplementation {
     bool WriteEntity(const SXMLEntity &entity) {
         switch(entity.DType) {
             case SXMLEntity::EType::StartElement:
-                if(!WriteIndent()) {
-                    return false;
-                }
                 if(!WriteString("<")) {
                     return false;
                 }
@@ -106,25 +86,20 @@ struct CXMLWriter::SImplementation {
                         return false;
                     }
                 }
-                if(!WriteString(">\n")) {
+                if(!WriteString(">")) {
                     return false;
                 }
                 DElementStack.push(entity.DNameData);
-                DIndentLevel++;
                 break;
                 
             case SXMLEntity::EType::EndElement:
-                DIndentLevel--;
-                if(!WriteIndent()) {
-                    return false;
-                }
                 if(!WriteString("</")) {
                     return false;
                 }
                 if(!WriteString(entity.DNameData)) {
                     return false;
                 }
-                if(!WriteString(">\n")) {
+                if(!WriteString(">")) {
                     return false;
                 }
                 if(!DElementStack.empty()) {
@@ -133,21 +108,12 @@ struct CXMLWriter::SImplementation {
                 break;
                 
             case SXMLEntity::EType::CharData:
-                if(!WriteIndent()) {
-                    return false;
-                }
                 if(!WriteEscaped(entity.DNameData)) {
-                    return false;
-                }
-                if(!WriteString("\n")) {
                     return false;
                 }
                 break;
                 
             case SXMLEntity::EType::CompleteElement:
-                if(!WriteIndent()) {
-                    return false;
-                }
                 if(!WriteString("<")) {
                     return false;
                 }
@@ -171,7 +137,7 @@ struct CXMLWriter::SImplementation {
                         return false;
                     }
                 }
-                if(!WriteString("/>\n")) {
+                if(!WriteString("/>")) {
                     return false;
                 }
                 break;
