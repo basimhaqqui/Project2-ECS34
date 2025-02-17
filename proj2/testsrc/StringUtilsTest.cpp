@@ -11,7 +11,7 @@ TEST(StringUtilsTest, SliceTest) {
 
 TEST(StringUtilsTest, CapitalizeTest) {
     EXPECT_EQ(StringUtils::Capitalize("hello"), "Hello");
-    EXPECT_EQ(StringUtils::Capitalize("HELLO"), "HELLO");
+    EXPECT_EQ(StringUtils::Capitalize("HELLO"), "Hello");
     EXPECT_EQ(StringUtils::Capitalize(""), "");
 }
 
