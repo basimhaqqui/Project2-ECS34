@@ -30,24 +30,11 @@ struct CXMLReader::SImplementation {
     
     static void CharacterDataHandler(void *userData, const XML_Char *s, int len) {
         auto Implementation = static_cast<SImplementation*>(userData);
-        if(len) {
-            std::string Content(s, len);
-            // Skip if content is only whitespace
-            bool OnlyWhitespace = true;
-            for(char Ch : Content) {
-                if(!std::isspace(Ch)) {
-                    OnlyWhitespace = false;
-                    break;
-                }
-            }
-            if(!OnlyWhitespace) {
-                SXMLEntity Entity;
-                Entity.DType = SXMLEntity::EType::CharData;
-                // Don't escape special characters - use raw content
-                Entity.DNameData = Content;
-                Implementation->DEntityQueue.push(Entity);
-            }
-        }
+        std::string Content(s, len);
+        SXMLEntity Entity;
+        Entity.DType = SXMLEntity::EType::CharData;
+        Entity.DNameData = Content;
+        Implementation->DEntityQueue.push(Entity);
     }
     
     SImplementation(std::shared_ptr<CDataSource> src)
