@@ -18,12 +18,9 @@ struct CXMLReader::SImplementation {
         entity.DType = SXMLEntity::EType::StartElement;
         entity.DNameData = name;
 
-        // Parse attributes
-        if (atts != nullptr) {
-            for (int i = 0; atts[i] != nullptr; i += 2) {
-                if (atts[i + 1] != nullptr) {
-                    entity.DAttributes.emplace_back(atts[i], atts[i + 1]);
-                }
+        for (int i = 0; atts && atts[i]; i += 2) {
+            if (atts[i + 1]) {
+                entity.DAttributes.emplace_back(atts[i], atts[i + 1]);
             }
         }
 
@@ -41,12 +38,14 @@ struct CXMLReader::SImplementation {
 
     static void CharDataHandler(void *userData, const char *s, int len) {
         auto *impl = static_cast<SImplementation *>(userData);
-        if (s != nullptr && len > 0) {
+        if (s && len > 0) {
             impl->CharDataBuffer.append(s, len);
         }
     }
 
-    SImplementation(std::shared_ptr<CDataSource> src) : DataSource(std::move(src)), EndOfData(false) {
+    SImplementation(std::shared_ptr<CDataSource> src) 
+        : DataSource(std::move(src))
+        , EndOfData(false) {
         Parser = XML_ParserCreate(nullptr);
         XML_SetUserData(Parser, this);
         XML_SetElementHandler(Parser, StartElementHandler, EndElementHandler);
@@ -68,27 +67,27 @@ struct CXMLReader::SImplementation {
     }
 
     bool ReadEntity(SXMLEntity &entity, bool skipcdata) {
+        const size_t READ_SIZE = 4096;
+        char buffer[READ_SIZE];
+        
         while (EntityQueue.empty() && !EndOfData) {
-            std::vector<char> buffer(4096); // Use vector instead of char array
-            size_t length = 0;
-            while (length < buffer.size() && !DataSource->End()) {
+            size_t bytesRead = 0;
+            
+            // Read data byte by byte until buffer is full or source is exhausted
+            while (bytesRead < READ_SIZE && !DataSource->End()) {
                 char ch;
                 if (DataSource->Get(ch)) {
-                    buffer[length++] = ch;
-                } else {
-                    break;
+                    buffer[bytesRead++] = ch;
                 }
             }
 
-            if (length == 0) {
-                // No more data to read
+            if (bytesRead == 0) {
                 EndOfData = true;
-                XML_Parse(Parser, nullptr, 0, 1); // Signal end of parsing
+                XML_Parse(Parser, nullptr, 0, 1);
                 break;
             }
 
-            if (XML_Parse(Parser, buffer.data(), length, 0) == XML_STATUS_ERROR) {
-                // Parsing error
+            if (XML_Parse(Parser, buffer, bytesRead, 0) == XML_STATUS_ERROR) {
                 return false;
             }
         }
@@ -97,15 +96,13 @@ struct CXMLReader::SImplementation {
             entity = EntityQueue.front();
             EntityQueue.pop();
 
-            // Skip CDATA if requested
             if (skipcdata && entity.DType == SXMLEntity::EType::CharData) {
-                return ReadEntity(entity, skipcdata); // Recursively skip CDATA
+                return ReadEntity(entity, skipcdata);
             }
-
             return true;
         }
 
-        return false; // No more entities to read
+        return false;
     }
 };
 
