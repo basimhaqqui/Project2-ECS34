@@ -167,23 +167,28 @@ std::string Join(const std::string &str, const std::vector<std::string> &vect) n
 }
 
 std::string ExpandTabs(const std::string &str, int tabsize) noexcept {
+    if(str.empty()) {
+        return str;
+    }
+    
     std::string result;
+    result.reserve(str.length() * 2); // Pre-allocate some space
     int col = 0;
     
     for(char ch : str) {
         if(ch == '\t') {
+            // Calculate spaces needed to reach next tab stop
             int spaces = tabsize - (col % tabsize);
-            result += std::string(spaces, ' ');
+            result.append(spaces, ' ');
             col += spaces;
+        }
+        else if(ch == '\n' || ch == '\r') {
+            result += ch;
+            col = 0;
         }
         else {
             result += ch;
-            if(ch == '\n') {
-                col = 0;
-            }
-            else {
-                ++col;
-            }
+            ++col;
         }
     }
     return result;
