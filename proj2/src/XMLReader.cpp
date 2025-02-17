@@ -31,14 +31,17 @@ struct CXMLReader::SImplementation {
     static void CharacterDataHandler(void *userData, const XML_Char *s, int len) {
         auto Implementation = static_cast<SImplementation*>(userData);
         std::string Content(s, len);
-        // Skip empty or whitespace-only character data
-        if(Content.find_first_not_of(" \t\n\r") == std::string::npos) {
-            return;
+        
+        // Combine consecutive character data
+        if(!Implementation->DEntityQueue.empty() && 
+           Implementation->DEntityQueue.back().DType == SXMLEntity::EType::CharData) {
+            Implementation->DEntityQueue.back().DNameData += Content;
+        } else {
+            SXMLEntity Entity;
+            Entity.DType = SXMLEntity::EType::CharData;
+            Entity.DNameData = Content;
+            Implementation->DEntityQueue.push(Entity);
         }
-        SXMLEntity Entity;
-        Entity.DType = SXMLEntity::EType::CharData;
-        Entity.DNameData = Content;
-        Implementation->DEntityQueue.push(Entity);
     }
     
     SImplementation(std::shared_ptr<CDataSource> src)
@@ -71,22 +74,25 @@ struct CXMLReader::SImplementation {
             return false;
         }
         
-        while(skipcdata && !DEntityQueue.empty() && 
-              DEntityQueue.front().DType == SXMLEntity::EType::CharData) {
-            DEntityQueue.pop();
-            
-            while(DEntityQueue.empty() && !DError && !DDataSource->End()) {
-                std::vector<char> Buffer;
-                if(DDataSource->Read(Buffer, 256)) {
-                    if(XML_Parse(DParser, Buffer.data(), Buffer.size(), DDataSource->End()) == XML_STATUS_ERROR) {
-                        DError = true;
+        if(skipcdata) {
+            while(!DEntityQueue.empty() && 
+                  DEntityQueue.front().DType == SXMLEntity::EType::CharData &&
+                  DEntityQueue.front().DNameData.find_first_not_of(" \t\n\r") == std::string::npos) {
+                DEntityQueue.pop();
+                if(DEntityQueue.empty() && !DDataSource->End()) {
+                    std::vector<char> Buffer;
+                    if(DDataSource->Read(Buffer, 256)) {
+                        if(XML_Parse(DParser, Buffer.data(), Buffer.size(), DDataSource->End()) == XML_STATUS_ERROR) {
+                            DError = true;
+                            return false;
+                        }
                     }
                 }
             }
-            
-            if(DError || (DEntityQueue.empty() && DDataSource->End())) {
-                return false;
-            }
+        }
+        
+        if(DEntityQueue.empty()) {
+            return false;
         }
         
         entity = DEntityQueue.front();

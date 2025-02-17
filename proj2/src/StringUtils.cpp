@@ -31,11 +31,21 @@ std::string Capitalize(const std::string &str) noexcept {
     if(str.empty()) {
         return str;
     }
-    // Only convert first character to uppercase, leave rest unchanged
+    
     std::string result = str;
-    if (std::isalpha(result[0])) {
-        result[0] = std::toupper(result[0]);
+    bool first_letter = true;
+    
+    for(size_t i = 0; i < result.length(); ++i) {
+        if(std::isalpha(result[i])) {
+            if(first_letter) {
+                result[i] = std::toupper(result[i]);
+                first_letter = false;
+            } else {
+                result[i] = std::tolower(result[i]);
+            }
+        }
     }
+    
     return result;
 }
 
