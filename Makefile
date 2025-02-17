@@ -9,12 +9,6 @@ BINDIR = bin
 SRCDIR = src
 TESTDIR = testsrc
 
-# Source files
-SOURCES = $(wildcard $(SRCDIR)/*.cpp)
-TESTSOURCES = $(wildcard $(TESTDIR)/*.cpp)
-OBJECTS = $(SOURCES:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
-TESTOBJECTS = $(TESTSOURCES:$(TESTDIR)/%.cpp=$(OBJDIR)/%.o)
-
 # Test executables
 TESTSTRUTILS = $(BINDIR)/teststrutils
 TESTSTRDATASOURCE = $(BINDIR)/teststrdatasource
@@ -27,8 +21,8 @@ TESTXML = $(BINDIR)/testxml
 all: directories $(TESTSTRUTILS) $(TESTSTRDATASOURCE) $(TESTSTRDATASINK) $(TESTDSV) $(TESTXML) test
 
 directories:
-	@mkdir -p $(OBJDIR)
-	@mkdir -p $(BINDIR)
+	mkdir -p $(OBJDIR)
+	mkdir -p $(BINDIR)
 
 # Pattern rules for object files
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
