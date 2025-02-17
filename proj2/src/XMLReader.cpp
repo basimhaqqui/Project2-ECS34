@@ -57,7 +57,6 @@ struct CXMLReader::SImplementation {
         while(DEntityQueue.empty() && !DError && !DDataSource->End()) {
             std::vector<char> Buffer;
             if(DDataSource->Read(Buffer, 256)) {
-                // Parse the XML chunk
                 if(XML_Parse(DParser, Buffer.data(), Buffer.size(), DDataSource->End()) == XML_STATUS_ERROR) {
                     DError = true;
                 }
@@ -68,50 +67,27 @@ struct CXMLReader::SImplementation {
             return false;
         }
         
-        // Skip CharData if requested
-        if(skipcdata) {
-            while(!DEntityQueue.empty() && DEntityQueue.front().DType == SXMLEntity::EType::CharData) {
-                // Check if the CharData contains only whitespace
-                bool onlyWhitespace = true;
-                for(char c : DEntityQueue.front().DNameData) {
-                    if(!std::isspace(c)) {
-                        onlyWhitespace = false;
-                        break;
+        while(skipcdata && !DEntityQueue.empty() && 
+              DEntityQueue.front().DType == SXMLEntity::EType::CharData) {
+            DEntityQueue.pop();
+            
+            while(DEntityQueue.empty() && !DError && !DDataSource->End()) {
+                std::vector<char> Buffer;
+                if(DDataSource->Read(Buffer, 256)) {
+                    if(XML_Parse(DParser, Buffer.data(), Buffer.size(), DDataSource->End()) == XML_STATUS_ERROR) {
+                        DError = true;
                     }
                 }
-                
-                // If it's only whitespace, remove it
-                if(onlyWhitespace) {
-                    DEntityQueue.pop();
-                } else {
-                    // If it contains non-whitespace, keep it
-                    break;
-                }
-                
-                // Read more if queue is empty
-                while(DEntityQueue.empty() && !DError && !DDataSource->End()) {
-                    std::vector<char> Buffer;
-                    if(DDataSource->Read(Buffer, 256)) {
-                        if(XML_Parse(DParser, Buffer.data(), Buffer.size(), DDataSource->End()) == XML_STATUS_ERROR) {
-                            DError = true;
-                        }
-                    }
-                }
-                
-                if(DError || (DEntityQueue.empty() && DDataSource->End())) {
-                    return false;
-                }
+            }
+            
+            if(DError || (DEntityQueue.empty() && DDataSource->End())) {
+                return false;
             }
         }
         
-        // Return next entity
-        if(!DEntityQueue.empty()) {
-            entity = DEntityQueue.front();
-            DEntityQueue.pop();
-            return true;
-        }
-        
-        return false;
+        entity = DEntityQueue.front();
+        DEntityQueue.pop();
+        return true;
     }
 };
 
